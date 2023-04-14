@@ -1,0 +1,6 @@
+# git ignore file so these files aren't pushed to github
+# for more info:
+# https://git-scm.com/book/en/Git-Basics-Recording-Changes-to-the-Repository#_ignoring
+
+.env/
+venv/
