@@ -1,3 +1,6 @@
+from flask import Flask, render_template, request
+from weather import main as get_weather
+
 from flask import Flask, render_template
 from dotenv import load_dotenv
 import os
@@ -11,6 +14,8 @@ load_dotenv()
 
 client_id = os.getenv("CLIENT_ID")
 client_secret = os.getenv("CLIENT_SECRET")
+
+
 
 app = Flask("411-Group-Project")
 
