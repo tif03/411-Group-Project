@@ -1,18 +1,18 @@
-from flask import Flask, render_template, request
-from weather import main as get_weather
+""" reference https://github.com/lucaoh21/Spotify-Discover-2.0/blob/master/functions.py """
 
-from dotenv import load_dotenv
+from flask import Flask, render_template, request, session, redirect
+from weather import main as getweather
+from spotify import createStateKey, getToken, getUserInformation
 import os
+from dotenv import load_dotenv
 import base64
 from requests import post, get
-from logging import error
+from logging import error, info
 import json
 import random
+import time
 
 load_dotenv()
-
-client_id = os.getenv("CLIENT_ID")
-client_secret = os.getenv("CLIENT_SECRET")
 
 app = Flask("411-Group-Project")
 
@@ -20,48 +20,58 @@ app = Flask("411-Group-Project")
 def home():
     return render_template("index.html")
 
-def generateRandomString(length):
-    letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-    return ''.join(random.choice(letters) for i in range(length))
 
 @app.route("/login")
 def login():
+    client_id = app.config['CLIENT_ID']
+    client_secret = app.config['CLIENT_SECRET']
     redirect_uri = app.config['REDIRECT_URI']
-    state = generateRandomString(16)
     scope = 'ugs-image-upload playlist-modify-private playlist-modify-public user-top-read'
+    
+    state_key = createStateKey(15)
+    session['state_key'] = state_key
+
+    authorize_url = "https://accounts.spotify.com/authorize?"
     params = {
         "response_type": "code",
         "client_id": client_id,
         "scope": scope,
         "redirect_uri": redirect_uri,
-        "state": state,
+        "state": state_key,
     }
-    url = "https://accounts.spotify.com/authorize?"
-    result = post(url, headers=params)
+
+    result = post(authorize_url, headers=params)
     json_result = json.loads(result.content)
     return json_result
 
-def getToken(code):
-    authorization = app.config['AUTHORIZATION']
-    redirect_uri = app.config['REDIRECT_URI']
+""" Called after user authorized application through Spotify API page, stores user info 
+redirects in a session and redirects user back to page initially visited """
+@app.route('/callback')
+def callback():
+    if request.arg.get('state') != session['state_key']:
+        return render_template('index.html', error = 'State failed.')
 
-    auth_string = client_id + ":" + client_secret
-    auth_bytes =  auth_string.encode("utf-8")
-    auth_base64 = str(base64.b64encode(auth_bytes), "utf-8")
+    if request.args.get('error'):
+        return render_template('index.html', error = 'SPotify error.')
 
-    url = "https://accounts.spotify.com/api/token"
-    headers = {'Authorization': authorization, 
-             'Accept': 'application/json', 
-             'Content-Type': 'application/x-www-form-urlencoded'}
-    body = {'code': code, 'redirect_uri': redirect_uri, 
-          'grant_type': 'authorization_code'}
-    post_response = post(url,headers=headers,data=body)
-    if post_response.status_code == 200:
-        pr = post_response.json()
-        return pr['access_token'], pr['refresh_token'], pr['expires_in']
     else:
-        error('getToken:' + str(post_response.status_code))
-        return None
+        code = request.arg.get('code')
+        session.pop('state key', None)
+
+        payload = getToken(code)
+        if payload != None:
+            session['token'] = payload[0]
+            session['refresh_token'] = payload[1]
+            session['token_expiration'] = time.time() + payload[2]
+
+        else:
+            return render_template('index.html', error = 'Failed access token.')
+
+    current_user = getUserInformation(session)
+    session['user_id'] = current_user['id']
+    info('new user:' + session['user_id'])
+
+    return redirect(session['previous_url'])
 
 if __name__ == "__main__":
     app.run()
