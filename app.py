@@ -11,9 +11,6 @@ import random
 
 load_dotenv()
 
-client_id = os.getenv("CLIENT_ID")
-client_secret = os.getenv("CLIENT_SECRET")
-
 app = Flask("411-Group-Project")
 
 @app.route("/")
