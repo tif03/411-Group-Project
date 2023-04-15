@@ -1,4 +1,7 @@
-""" reference https://github.com/lucaoh21/Spotify-Discover-2.0/blob/master/functions.py """
+""" 
+Main file with all routes
+reference https://github.com/lucaoh21/Spotify-Discover-2.0/blob/master/functions.py 
+"""
 
 from flask import Flask, render_template, request, session, redirect
 from weather import main as getweather
