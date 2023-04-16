@@ -188,5 +188,35 @@ def getUserInformation(session):
 
     return payload
 
+"""
+Get user top tracks
+"""
+def getUserTopTracks(session):
+	type = 'tracks'
+	time_range = 'short_term'	#top tracks of the past 4 weeks
+	limit = '20'
+	url = f'https://api.spotify.com/v1/me/top/{type}/{time_range}/{limit}'
+
+	payload = makeGetRequest(session, url)
+
+	if payload == None:
+		return None
+
+	return payload
+
+"""
+Get user top artists
+"""
+def getUserTopArtists(session):
+	type = 'artists'
+	time_range = 'short_term'	#top artists of the past 4 weeks
+	limit = '20'
+	url = f'https://api.spotify.com/v1/me/top/{type}/{time_range}/{limit}'
+
+	payload = makeGetRequest(session, url)
+	if payload == None:
+		return None
+		
+	return payload
 
 

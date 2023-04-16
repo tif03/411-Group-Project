@@ -29,7 +29,7 @@ def login():
     client_id = app.config['CLIENT_ID']
     client_secret = app.config['CLIENT_SECRET']
     redirect_uri = app.config['REDIRECT_URI']
-    scope = 'ugs-image-upload playlist-modify-private playlist-modify-public user-top-read'
+    scope = app.config['SCOPE']
     
     state_key = createStateKey(15)
     session['state_key'] = state_key
@@ -75,6 +75,11 @@ def callback():
     info('new user:' + session['user_id'])
 
     return redirect(session['previous_url'])
+
+""" 
+Grabs the current weather report -- prompt the user to press a button "get weather and playlist"
+@app.route('/currweather', methods = ['GET'])
+"""
 
 if __name__ == "__main__":
     app.run()
