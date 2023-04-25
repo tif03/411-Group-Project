@@ -1,15 +1,20 @@
-from flask import Flask, render_template, request, session, make_response, redirect
+from flask import Flask, render_template, request, session, redirect, url_for
 from weather import main as get_weather
-import random as rand
 import string as string
-import requests
 import time
-import logging
-from dotenv import load_dotenv
-import os
+import spotipy
+from spotipy.oauth2 import SpotifyOAuth
 
 app = Flask("411-Group-Project")
 
+# set the name of the session cookie
+app.config['SESSION_COOKIE_NAME'] = 'Spotify Cookie'
+
+# set a random secret key to sign the cookie
+app.secret_key = 'YOUR_SECRET_KEY'
+
+# set the key for the token info in the session dictionary
+TOKEN_INFO = 'token_info'
 
 # we need to pass in what methods are allowed to be called from this route, by default only get is allowed
 @app.route("/", methods=['GET', 'POST'])
@@ -25,205 +30,118 @@ def home():
         
         # we will call our get_weather method we created, save result in data
         data = get_weather(city, state, country)
+    return redirect(url_for('login'))
+    # ******************TEMPORARILY COMMENTING THIS OUT UNTIL WE FIGURE OUT HOW TO CONNECT WEATHER STUFF TO SPOTIFY STUFF***********************************
+	# we then pass in data as a parameter to the front end so we can display it there
+    # return render_template("index.html", data=data)
+
+
+# route to handle logging in
+@app.route('/login')
+def login():
+    # create a SpotifyOAuth instance and get the authorization URL
+    auth_url = create_spotify_oauth().get_authorize_url()
+    # redirect the user to the authorization URL
+    return redirect(auth_url)
+
+# route to handle the redirect URI after authorization
+@app.route('/redirect')
+def redirect_page():
+    # clear the session
+    session.clear()
+    # get the authorization code from the request parameters
+    code = request.args.get('code')
+    # exchange the authorization code for an access token and refresh token
+    token_info = create_spotify_oauth().get_access_token(code)
+    # save the token info in the session
+    session[TOKEN_INFO] = token_info
+    # redirect the user to the save_discover_weekly route
+    return redirect(url_for('make_playlist',_external=True))
+
+
+# ******************************USES PLACEHOLDER VALENCE SCORE BOUNDS, WE NEED TO PASS IT IN SOMEHOW **********************************************
+# this route should generate the playlist Weatherify, and populate it with songs based on the user's top tracks
+@app.route('/makePlaylist')
+def make_playlist():
+    try: 
+        # get token info from session
+        token_info = get_token()
+    except:
+        # if no token info, redirect user to login route
+        print('User not logged in')
+        return redirect("/login")
+
+    # create a Spotipy instance with the access token
+    sp = spotipy.Spotify(auth=token_info['access_token'])
     
-    # we then pass in data as a parameter to the front end so we can display it there
-    return render_template("index.html", data=data)
+    # current user method returns a dictionary response, so we need to just grab the user id from it
+    current_user_id = sp.current_user()['id']
 
-
-# these are the spotify routes
-
-"""
-Called by the backend when a user has not authorized the application to
-access their Spotify account. Attempts to authorize a new user by redirecting
-them to the Spotify authorization page.
-"""
-@app.route('/authorize')
-def authorize():
-    # grabs the secrets etc from the .env file and stores it in api_key
-    #this is broken for some reason maybe i should change it to the config thing in the original
-    load_dotenv()
-    client_id = os.getenv('CLIENT_ID')
-    client_secret = os.getenv('CLIENT_SECRET')
-    redirect_uri = os.getenv('REDIRECT_URI')
-    scope = os.getenv('SCOPE')
-	
+    #first we need to make sure a playlist with same name doesn't exist already
+    current_playlists =  sp.current_user_playlists()['items']
+    existing_playlist_id = None
+    for playlist in current_playlists:
+        if(playlist['name'] == 'Weatherify'):
+            existing_playlist_id = playlist['id']
     
-    # state key used to protect against cross-site forgery attacks
-    state_key = createStateKey(15)
-    session['state_key'] = state_key
+    #create a playlist called Weatherify if that playlist doesn't exist already, and save its playlist id in existing_playlist_id
+    if existing_playlist_id == None:
+        existing_playlist_id=sp.user_playlist_create(current_user_id, 'Weatherify', public=True, collaborative=False, description='A playlist generated from the current weather at your location')['id']
 
-	# redirect user to Spotify authorization page
-    authorize_url = 'https://accounts.spotify.com/en/authorize?'
-    parameters = 'response_type=code&client_id=' + client_id + '&redirect_uri=' + redirect_uri + '&scope=' + scope + '&state=' + state_key
-    response = make_response(redirect(authorize_url + parameters))
+    #now we need to gather songs, we want to add songs to our playlist
+    song_uris = []
+    #get top tracks
+    top_tracks = sp.current_user_top_tracks(limit=20, offset=0, time_range='medium_term')['items']
+    for song in top_tracks:
+        # !!!!!!!!!!!!!!!!!!!!!!!!!!!if it falls within our valence range add it, these are placeholders, we need to pass in a lower/upper bound/weather param and valence score
+        #don't add if its a repeat
+        if (song['uri'] not in song_uris):
+            if (.15 - .15 < sp.audio_features(song['id'])[0]['valence'] < 1.15 + .15) :
+                song_uri= song['uri']
+                song_uris.append(song_uri)
+            
+    #loop over the user's playlists and within each playlist loop over songs and add them if they match valence req.
+    for playlist in sp.current_user_playlists(limit=50, offset=0)['items']:
+        playlist_id = playlist['id']
 
-    return response
+        for song in sp.playlist_items(playlist_id, fields=None, limit=15, offset=0, market=None, additional_types=('track', 'episode'))['items']:
+            #don't add if its a repeat
+            if (song['track']['uri'] not in song_uris):
+                if (.85 <= sp.audio_features(song['track']['id'])[0]['valence'] <= 1) :
+                    song_uri= song['track']['uri']
+                    song_uris.append(song_uri)
+    
 
+    # add the songs to the playlist
+    sp.user_playlist_add_tracks(current_user_id, existing_playlist_id, song_uris, None)
+    return "Successfully Weatherified"
 
-"""
-Called after a new user has authorized the application through the Spotift API page.
-Stores user information in a session and redirects user back to the page they initally
-attempted to visit.
-"""
-@app.route('/callback')
-def callback():
-	# make sure the response came from Spotify
-	if request.args.get('state') != session['state_key']:
-		return render_template('index.html', error='State failed.')
-	if request.args.get('error'):
-		return render_template('index.html', error='Spotify error.')
-	else:
-		code = request.args.get('code')
-		session.pop('state_key', None)
+def create_spotify_oauth():
+    return SpotifyOAuth(
+        client_id = '7c30de8bd7db4358a5ec744b60519752',
+        client_secret = '1e2556aecd2a426b96a626f4330a14a5',
+        redirect_uri = url_for('redirect_page', _external=True),
+        scope='user-read-private user-read-email user-library-read playlist-modify-public playlist-modify-private user-top-read'
+    )
 
-		# get access token to make requests on behalf of the user
-		payload = getToken(code)
-		if payload != None:
-			session['token'] = payload[0]
-			session['refresh_token'] = payload[1]
-			session['token_expiration'] = time.time() + payload[2]
-		else:
-			return render_template('index.html', error='Failed to access token.')
+# function to get the token info from the session
+def get_token():
+    token_info = session.get(TOKEN_INFO, None)
+    if not token_info:
+        # if the token info is not found, redirect the user to the login route
+        redirect(url_for('login', _external=False))
+    
+    # check if the token is expired and refresh it if necessary
+    now = int(time.time())
 
-	current_user = getUserInformation(session)
-	session['user_id'] = current_user['id']
-	logging.info('new user:' + session['user_id'])
+    is_expired = token_info['expires_at'] - now < 60
+    if(is_expired):
+        spotify_oauth = create_spotify_oauth()
+        token_info = spotify_oauth.refresh_access_token(token_info['refresh_token'])
 
-	return redirect(session['previous_url'])
+    return token_info
 
+app.run(debug=True)
 
-
-
-
-
-
-
-
-
-# these are the Spotify functions 
-"""
-Creates a state key for the authorization request
-"""
-def createStateKey(size):
-	#https://stackoverflow.com/questions/2257441/random-string-generation-with-upper-case-letters-and-digits
-	return ''.join(rand.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(size))
-
-
-
-"""
-Requests an access token from the Spotify API. Only called if no refresh token for the
-current user exists.
-Returns: either [access token, refresh token, expiration time] or None if request failed
-"""
-def getToken(code):
-	token_url = 'https://accounts.spotify.com/api/token'
-	authorization = app.config['AUTHORIZATION']
-	redirect_uri = app.config['REDIRECT_URI']
-
-	headers = {'Authorization': authorization, 'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded'}
-	body = {'code': code, 'redirect_uri': redirect_uri, 'grant_type': 'authorization_code'}
-	post_response = requests.post(token_url, headers=headers, data=body)
-
-	# 200 code indicates access token was properly granted
-	if post_response.status_code == 200:
-		json = post_response.json()
-		return json['access_token'], json['refresh_token'], json['expires_in']
-	else:
-		logging.error('getToken:' + str(post_response.status_code))
-		return None
-
-
-"""
-Requests an access token from the Spotify API with a refresh token. Only called if an access
-token and refresh token were previously acquired.
-Returns: either [access token, expiration time] or None if request failed
-"""
-def refreshToken(refresh_token):
-	token_url = 'https://accounts.spotify.com/api/token'
-	authorization = app.config['AUTHORIZATION']
-
-	headers = {'Authorization': authorization, 'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded'}
-	body = {'refresh_token': refresh_token, 'grant_type': 'refresh_token'}
-	post_response = requests.post(token_url, headers=headers, data=body)
-
-	# 200 code indicates access token was properly granted
-	if post_response.status_code == 200:
-		return post_response.json()['access_token'], post_response.json()['expires_in']
-	else:
-		logging.error('refreshToken:' + str(post_response.status_code))
-		return None
-
-"""
-Determines whether new access token has to be requested because time has expired on the 
-old token. If the access token has expired, the token refresh function is called. 
-Returns: None if error occured or 'Success' string if access token is okay
-"""
-def checkTokenStatus(session):
-	if time.time() > session['token_expiration']:
-		payload = refreshToken(session['refresh_token'])
-
-		if payload != None:
-			session['token'] = payload[0]
-			session['token_expiration'] = time.time() + payload[1]
-		else:
-			logging.error('checkTokenStatus')
-			return None
-
-	return "Success"
-
-
-"""
-REQUESTS: Functions to make GET, POST, PUT, and DELETE requests with the correct
-authorization headers.
-"""
-
-"""
-Makes a GET request with the proper headers. If the request succeeds, the json parsed
-response is returned. If the request fails because the access token has expired, the
-check token function is called to update the access token.
-Returns: Parsed json response if request succeeds or None if request fails
-"""
-def makeGetRequest(session, url, params={}):
-	headers = {"Authorization": "Bearer {}".format(session['token'])}
-	response = requests.get(url, headers=headers, params=params)
-
-	# 200 code indicates request was successful
-	if response.status_code == 200:
-		return response.json()
-
-	# if a 401 error occurs, update the access token
-	elif response.status_code == 401 and checkTokenStatus(session) != None:
-		return makeGetRequest(session, url, params)
-	else:
-		logging.error('makeGetRequest:' + str(response.status_code))
-		return None
-
-
-
-"""
-PERSONAL USER INFORMATION: Functions that get information specific to the user.
-"""
-
-"""
-Gets user information such as username, user ID, and user location.
-Returns: Json response of user information
-"""
-def getUserInformation(session):
-	url = 'https://api.spotify.com/v1/me'
-	payload = makeGetRequest(session, url)
-
-	if payload == None:
-		return None
-
-	return payload
-
-
-
-
-
-
-
-
-
-if __name__ == "__main__":
-    app.run()
+# if __name__ == "__main__":
+#     app.run()
