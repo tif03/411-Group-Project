@@ -18,6 +18,7 @@ import time
 load_dotenv()
 
 app = Flask("411-Group-Project")
+app.config.from_pyfile('config.py')
 
 @app.route("/")
 def home():
