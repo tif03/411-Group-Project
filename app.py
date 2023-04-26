@@ -16,6 +16,8 @@ app.secret_key = 'YOUR_SECRET_KEY'
 # set the key for the token info in the session dictionary
 TOKEN_INFO = 'token_info'
 
+weather=""
+
 # we need to pass in what methods are allowed to be called from this route, by default only get is allowed
 @app.route("/", methods=['GET', 'POST'])
 def home():
@@ -30,10 +32,18 @@ def home():
         
         # we will call our get_weather method we created, save result in data
         data = get_weather(city, state, country)
+        weather=data.description
+
+        #we set the valence score based on the weather description
+
     return redirect(url_for('login'))
     # ******************TEMPORARILY COMMENTING THIS OUT UNTIL WE FIGURE OUT HOW TO CONNECT WEATHER STUFF TO SPOTIFY STUFF***********************************
 	# we then pass in data as a parameter to the front end so we can display it there
     # return render_template("index.html", data=data)
+
+#NOT SURE IF KEEPING THIS TEMPORARIILY COMMENTING OUT
+# @app.route('/finished')
+# def display_playlist():
 
 
 # route to handle logging in
@@ -96,7 +106,7 @@ def make_playlist():
         # !!!!!!!!!!!!!!!!!!!!!!!!!!!if it falls within our valence range add it, these are placeholders, we need to pass in a lower/upper bound/weather param and valence score
         #don't add if its a repeat
         if (song['uri'] not in song_uris):
-            if (.15 - .15 < sp.audio_features(song['id'])[0]['valence'] < 1.15 + .15) :
+            if (.85 <= sp.audio_features(song['id'])[0]['valence'] <= 1) :
                 song_uri= song['uri']
                 song_uris.append(song_uri)
             
@@ -114,7 +124,15 @@ def make_playlist():
 
     # add the songs to the playlist
     sp.user_playlist_add_tracks(current_user_id, existing_playlist_id, song_uris, None)
-    return "Successfully Weatherified"
+    
+
+
+    # send them to the done html page and display their generated playlist
+    playlist=[]
+
+    #checking if we can access weather within this function
+    return weather
+    #return render_template("done.html", playlist=playlist)
 
 def create_spotify_oauth():
     return SpotifyOAuth(
