@@ -99,11 +99,11 @@ def makeGetRequest(session, url, params={}):
 	response = requests.get(url, headers=headers, params=params)
 
 	# 200 code indicates request was successful
-	if response.status_code == 200:
+	if response.cod== 200:
 		return response.json()
 
 	# if a 401 error occurs, update the access token
-	elif response.status_code == 401 and checkTokenStatus(session) != None:
+	elif response.cod == 401 and checkTokenStatus(session) != None:
 		return makeGetRequest(session, url, params)
 
 	else:
