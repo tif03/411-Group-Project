@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+    <head>
+        <meta charset="UTF-8">
+        
+        <title>Forecast Playlist Generated</title>
+    </head>
+
+    <body>
+        <h1> Forecast Playlist Generated </h1>
+        <p> Generate a playlist based off your local weather. </p>
+        
+        <!-- form where users can enter their location --> 
+        <form action="/" method="post">
+            <input type="text" id="cityName" name="cityName" placeholder="City">
+            <input type="text" id="stateName" name="stateName" placeholder="State">
+            <input type="text" id="countryName" name="countryName" placeholder="Country">
+            <button>Get Weather</button>
+            
+            <!-- Jinja templating can display variables you passed in only if that data is not none, we access the description attribute of data -->
+            {% if data %}
+            {{ data.main }}: {{ data.description }}
+            <img src="https://openweathermap.org/img/wn/{{data.icon}}@2x.png" alt="Icon">
+            {{ data.temperature }}
+            {% endif %}
+
+        </form> 
+    </body>
+</html>
