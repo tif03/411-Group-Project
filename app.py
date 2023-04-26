@@ -4,6 +4,8 @@ import string as string
 import time
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
+from dotenv import load_dotenv
+import os
 
 app = Flask("411-Group-Project")
 
@@ -135,9 +137,15 @@ def make_playlist():
     #return render_template("done.html", playlist=playlist)
 
 def create_spotify_oauth():
+    # ********NEED TO FIX, IS CAUSING ERRORS WITH TOKEN, FOR NOW IT ONLY
+    #**********WORKS WHEN YOU DIRECTLY SET client_id, client_secret equal to their values
+    # grabs the api key from the .env file and stores it in api_key
+    load_dotenv()
+    id= os.getenv('CLIENT_ID')
+    secret=os.getenv('CLIENT_SECRET')
     return SpotifyOAuth(
-        client_id = '7c30de8bd7db4358a5ec744b60519752',
-        client_secret = '1e2556aecd2a426b96a626f4330a14a5',
+        client_id = id,
+        client_secret = secret,
         redirect_uri = url_for('redirect_page', _external=True),
         scope='user-read-private user-read-email user-library-read playlist-modify-public playlist-modify-private user-top-read'
     )
