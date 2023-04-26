@@ -24,7 +24,7 @@ api_key= os.getenv('API_KEY')
 def get_lat_lon(city_name, state_code, country_code, API_key):
     # make call with passed in params, then get response and then convert it to readable json
     resp = requests.get(f'http://api.openweathermap.org/geo/1.0/direct?q={city_name},{state_code},{country_code}&appid={API_key}').json()
-    
+    print(resp)
     # the dictionary is the first element of response, store it in data
     data = resp[0]
     lat, lon = data.get('lat'), data.get('lon')
@@ -32,7 +32,7 @@ def get_lat_lon(city_name, state_code, country_code, API_key):
 
 def get_current_weather(lat, lon, API_key):
     resp = requests.get(f'https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={API_key}&units=imperial').json()
-    
+
     # create data oject of our defined type weatherdata so we can easily grab the data we want
     data = WeatherData(
         main=resp.get('weather')[0].get('main'),

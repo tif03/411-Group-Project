@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 import os
 
 app = Flask("411-Group-Project")
+app.config.from_pyfile('config.py')
 
 # set the name of the session cookie
 app.config['SESSION_COOKIE_NAME'] = 'Spotify Cookie'
