@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 import os
 
 app = Flask("411-Group-Project")
+app.config.from_pyfile('config.py')
 
 # set the name of the session cookie
 app.config['SESSION_COOKIE_NAME'] = 'Spotify Cookie'
@@ -30,11 +31,11 @@ app.secret_key = 'YOUR_SECRET_KEY'
 # set the key for the token info in the session dictionary
 TOKEN_INFO = 'token_info'
 
-weather=""
+# weather=""
 
-@app.route("/")
-def home():
-    return render_template("index.html")
+# @app.route("/")
+# def home():
+#     return render_template("index.html")
 
 @app.route("/home")
 def login():
