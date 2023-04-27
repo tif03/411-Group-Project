@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, session, redirect, url_for
 from weather import main as get_weather
 import string as string
 import time
+import requests
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 from dotenv import load_dotenv
@@ -18,7 +19,7 @@ app.secret_key = 'YOUR_SECRET_KEY'
 # set the key for the token info in the session dictionary
 TOKEN_INFO = 'token_info'
 
-weather=""
+weather= ""
 
 # set the name of the session cookie
 app.config['SESSION_COOKIE_NAME'] = 'Spotify Cookie'
@@ -35,38 +36,7 @@ weather=""
 def home():
     return render_template("index.html")
 
-
-@app.route("/login")
-def login():
-    client_id = app.config['CLIENT_ID']
-    client_secret = app.config['CLIENT_SECRET']
-    redirect_uri = app.config['REDIRECT_URI']
-    scope = app.config['SCOPE']
-    
-    # when the user clicks the button to send in the form, they make a post request
-    if request.method == 'POST':
-        city = request.form['cityName']
-        state = request.form['stateName']
-        country = request.form['countryName']
-        
-        # we will call our get_weather method we created, save result in data
-        data = get_weather(city, state, country)
-        weather=data.description
-
-        #we set the valence score based on the weather description
-
-    return redirect(url_for('login'))
-    # ******************TEMPORARILY COMMENTING THIS OUT UNTIL WE FIGURE OUT HOW TO CONNECT WEATHER STUFF TO SPOTIFY STUFF***********************************
-	# we then pass in data as a parameter to the front end so we can display it there
-    # return render_template("index.html", data=data)
-
-#NOT SURE IF KEEPING THIS TEMPORARIILY COMMENTING OUT
-# @app.route('/finished')
-# def display_playlist():
-
-
-# route to handle logging in
-@app.route('/login')
+@app.route("/home")
 def login():
     # create a SpotifyOAuth instance and get the authorization URL
     auth_url = create_spotify_oauth().get_authorize_url()
@@ -157,14 +127,11 @@ def create_spotify_oauth():
     # ********NEED TO FIX, IS CAUSING ERRORS WITH TOKEN, FOR NOW IT ONLY
     #**********WORKS WHEN YOU DIRECTLY SET client_id, client_secret equal to their values
     # grabs the api key from the .env file and stores it in api_key
-    load_dotenv()
-    id= os.getenv('CLIENT_ID')
-    secret=os.getenv('CLIENT_SECRET')
     return SpotifyOAuth(
-        client_id = id,
-        client_secret = secret,
-        redirect_uri = url_for('redirect_page', _external=True),
-        scope='user-read-private user-read-email user-library-read playlist-modify-public playlist-modify-private user-top-read'
+        client_id = app.config['CLIENT_ID'],
+        client_secret = app.config['CLIENT_SECRET'],
+        redirect_uri = app.config['REDIRECT_URI'],
+        scope = app.config['SCOPE']
     )
 
 # function to get the token info from the session

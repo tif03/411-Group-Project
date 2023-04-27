@@ -1,8 +1,7 @@
 # this file processes the api call for Open Weather API
 # requires you to have installed requests, dotenv in your virtual env to get this to work
-
+from main import app
 import requests
-from dotenv import load_dotenv
 import os
 from dataclasses import dataclass
 
@@ -17,8 +16,7 @@ class WeatherData:
 
 
 # grabs the api key from the .env file and stores it in api_key
-load_dotenv()
-api_key= os.getenv('API_KEY')
+api_key = app.config['API_KEY']
 
 # first we use Geocoding version of API to get latitude and longitude based on passed in parameters
 def get_lat_lon(city_name, state_code, country_code, API_key):

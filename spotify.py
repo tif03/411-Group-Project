@@ -103,7 +103,7 @@ def makeGetRequest(session, url, params={}):
 		return response.json()
 
 	# if a 401 error occurs, update the access token
-	elif response.cod == 401 and checkTokenStatus(session) != None:
+	elif response.cod == 401:
 		return makeGetRequest(session, url, params)
 
 	else:
@@ -124,7 +124,7 @@ def makePutRequest(session, url, params={}, data={}):
 		return response.status_code
 
 	# if a 401 error occurs, update the access token
-	elif response.status_code == 401 and checkTokenStatus(session) != None:
+	elif response.status_code == 401:
 		return makePutRequest(session, url, data)
 	else:
 		logging.error('makePutRequest:' + str(response.status_code))
@@ -146,7 +146,7 @@ def makePostRequest(session, url, data):
 		return response
 
 	# if a 401 error occurs, update the access token
-	elif response.status_code == 401 and checkTokenStatus(session) != None:
+	elif response.status_code == 401:
 		return makePostRequest(session, url, data)
 
 	elif response.status_code == 403 or response.status_code == 404:
@@ -170,7 +170,7 @@ def makeDeleteRequest(session, url, data):
 		return response.json()
 
 	# if a 401 error occurs, update the access token
-	elif response.status_code == 401 and checkTokenStatus(session) != None:
+	elif response.status_code == 401:
 		return makeDeleteRequest(session, url, data)
 	else:
 		logging.error('makeDeleteRequest:' + str(response.status_code))
