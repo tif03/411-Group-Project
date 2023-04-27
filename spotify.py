@@ -23,31 +23,6 @@ def createStateKey(size):
 	return ''.join(rand.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(size))
 
 """
-Requests an access token from Spotify API
-"""
-def getToken(code):
-    token_url = "https://accounts.spotify.com/api/token"
-    
-    authorization = app.config['AUTHORIZATION']
-    redirect_uri = app.config['REDIRECT_URI']
-
-    headers = {'Authorization': authorization, 
-             'Accept': 'application/json', 
-             'Content-Type': 'application/x-www-form-urlencoded'}
-    body = {'code': code, 'redirect_uri': redirect_uri, 
-          'grant_type': 'authorization_code'}
-          
-    post_response = requests.post(token_url,headers=headers,data=body)
-
-    if post_response.status_code == 200:
-        pr = post_response.json()
-        return pr['access_token'], pr['refresh_token'], pr['expires_in']
-    
-    else:
-        logging.error('getToken:' + str(post_response.status_code))
-        return None
-
-"""
 Requests an access token from the Spotify API with a refresh token. Only called if an access
 token and refresh token were previously acquired.
 Returns: either [access token, expiration time] or None if request failed
