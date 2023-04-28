@@ -166,13 +166,10 @@ def make_playlist():
 def create_spotify_oauth():
     # grabs the api key from the .env file and stores it in api_key
     return SpotifyOAuth(
-        # client_id = app.config['CLIENT_ID'],
-        # client_secret = app.config['CLIENT_SECRET'],
-        client_id = '45610d4f9a3f4b5da8014d6b9b91a42f',
-        client_secret = '3532e94999e24dc7a2baa2a973cbf5d5',
+        client_id = app.config['CLIENT_ID'],
+        client_secret = app.config['CLIENT_SECRET'],
         redirect_uri = url_for('redirect_page', _external=True),
-        # scope=app.config['SCOPE']
-        scope = 'user-read-private user-read-email user-library-read playlist-modify-public playlist-modify-private user-top-read'
+        scope=app.config['SCOPE']
     )
 
 # function to get the token info from the session
