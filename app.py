@@ -20,8 +20,6 @@ app.secret_key = 'YOUR_SECRET_KEY'
 # set the key for the token info in the session dictionary
 TOKEN_INFO = 'token_info'
 
-weather=""
-
 # set the name of the session cookie
 app.config['SESSION_COOKIE_NAME'] = 'Spotify Cookie'
 
@@ -31,16 +29,9 @@ app.secret_key = 'YOUR_SECRET_KEY'
 # set the key for the token info in the session dictionary
 TOKEN_INFO = 'dfjjdslkjajsh%&'
 
-# weather=""
-
-# @app.route("/")
-# def home():
-#     return render_template("index.html")
-
-
+#*******************************COMMENTING OUT WEATHER CODE FOR NOW ***********************************************
 # @app.route("/login")
 # def login():
-    #*******************************COMMENTING OUT WEATHER CODE FOR NOW ***********************************************
     # client_id = app.config['CLIENT_ID']
     # client_secret = app.config['CLIENT_SECRET']
     # redirect_uri = app.config['REDIRECT_URI']
@@ -63,16 +54,10 @@ TOKEN_INFO = 'dfjjdslkjajsh%&'
 	# we then pass in data as a parameter to the front end so we can display it there
     # return render_template("index.html", data=data)
 
-#NOT SURE IF KEEPING THIS TEMPORARIILY COMMENTING OUT
-# @app.route('/finished')
-# def display_playlist():
-
-
-
+#our landing page, displays a button which routes the user to login
 @app.route('/')
 def home():
     return render_template('index.html')
-
 
 
 # route to handle logging in
