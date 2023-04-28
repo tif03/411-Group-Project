@@ -155,21 +155,24 @@ def make_playlist():
     sp.user_playlist_add_tracks(current_user_id, existing_playlist_id, song_uris, None)
     
 
+    #************************TO-DO: WE NEED TO STORE THEIR EMAIL/USER ID WITH THEIR PLAYLIST IN A DATABASE, AND THEN FETCH IT AND DISPLAY IT ON DONE PAGE
+
 
     # send them to the done html page and display their generated playlist
     playlist=[]
 
-    #checking if we can access weather within this function
-    return weather
-    #return render_template("done.html", playlist=playlist)
+    return render_template("done.html", playlist=playlist)
 
 def create_spotify_oauth():
     # grabs the api key from the .env file and stores it in api_key
     return SpotifyOAuth(
-        client_id = app.config['CLIENT_ID'],
-        client_secret = app.config['CLIENT_SECRET'],
+        # client_id = app.config['CLIENT_ID'],
+        # client_secret = app.config['CLIENT_SECRET'],
+        client_id = '45610d4f9a3f4b5da8014d6b9b91a42f',
+        client_secret = '3532e94999e24dc7a2baa2a973cbf5d5',
         redirect_uri = url_for('redirect_page', _external=True),
-        scope=app.config['SCOPE']
+        # scope=app.config['SCOPE']
+        scope = 'user-read-private user-read-email user-library-read playlist-modify-public playlist-modify-private user-top-read'
     )
 
 # function to get the token info from the session
