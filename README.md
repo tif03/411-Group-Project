@@ -1,5 +1,5 @@
 # 411 Project - Weatherfy (FindWeather Coding Part)
-Group Members: Tiffany Yu, Emily Doherty, Ali Almatrood
+Group Members: Ali Almatrood, Tiffany Yu, Emily Doherty
 
 This part uses Javascript and HTML with OpenWeatherMap and LocationIQ APIs
 
