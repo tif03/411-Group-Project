@@ -1,4 +1,4 @@
-# 411 Project - Weatherfy (Finding Weather Coding Part)
+# 411 Project - Weatherfy (FindWeather Coding Part)
 Group Members: Tiffany Yu, Emily Doherty, Ali Almatrood
 
 This part uses Javascript and HTML with OpenWeatherMap and LocationIQ APIs
