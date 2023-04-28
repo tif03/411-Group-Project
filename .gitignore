@@ -2,8 +2,8 @@
 # for more info:
 # https://git-scm.com/book/en/Git-Basics-Recording-Changes-to-the-Repository#_ignoring
 
-.env/
 venv/
-
 config.py
 .DS_Store
+.cache
+__pycache__/weather.cpython-311.pyc
