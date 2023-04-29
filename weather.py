@@ -3,10 +3,14 @@ from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderServiceError
 from geopy.extra.rate_limiter import RateLimiter
 from ipregistry import IpregistryClient
+import os
+from dotenv import load_dotenv
 
-API_KEY = "f18b28d8ac2c5d60b45b17e9d0a42ed2"
-LOCATION_API_KEY = "pk.96d197d5b545c6078cd1fa0ac71e2050"
-IP_API_KEY = "naqrafur4j4g4xgf"
+load_dotenv()
+
+API_KEY = os.getenv("API_KEY")
+LOCATION_API_KEY = os.getenv("LOCATION_API_KEY")
+IP_API_KEY = os.getenv("IP_API_KEY")
 
 def get_current_location():
     client = IpregistryClient(IP_API_KEY)
