@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="UTF-8">
+    <title>Weatherify</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $("#find-me").click(function() {
+                $.getJSON('/weather', function(data) {
+                    if (data.city && data.country_code) {
+                        $("#status").text(`The weather in ${data.city}, ${data.country_code} is ${data.description} with temperature of ${data.fehTemperature.toFixed(0)}°F / ${data.celTemperature.toFixed(0)}°C`);
+                    } else {
+                        $("#status").text("Oops! Unable to retrieve your location :(");
+                    }
+                });
+            });
+        });
+    </script>
+</head>
+<body>
+    <h1>Spotify Weather App</h1>
+    <p>Generate a playlist based off your local weather.</p>
+    <button id="find-me">Show My Weather</button>
+    <p id="status"></p>
+    <a id="map-link" target="_blank"></a>
+    <form action="/" method="post">
+    </form>
+</body>
+</html>
