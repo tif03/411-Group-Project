@@ -11,16 +11,7 @@ import os
 app = Flask("411-Group-Project")
 app.config.from_pyfile('config.py')
 
-# set the name of the session cookie
-app.config['SESSION_COOKIE_NAME'] = 'Spotify Cookie'
-
-# set a random secret key to sign the cookie
-app.secret_key = 'YOUR_SECRET_KEY'
-
-# set the key for the token info in the session dictionary
-TOKEN_INFO = 'token_info'
-
-weather= ""
+app.config.from_pyfile('config.py')
 
 # set the name of the session cookie
 app.config['SESSION_COOKIE_NAME'] = 'Spotify Cookie'
@@ -31,13 +22,48 @@ app.secret_key = 'YOUR_SECRET_KEY'
 # set the key for the token info in the session dictionary
 TOKEN_INFO = 'token_info'
 
-# weather=""
+# set the name of the session cookie
+app.config['SESSION_COOKIE_NAME'] = 'Spotify Cookie'
 
-# @app.route("/")
-# def home():
-#     return render_template("index.html")
+# set a random secret key to sign the cookie
+app.secret_key = 'YOUR_SECRET_KEY'
 
-@app.route("/home")
+# set the key for the token info in the session dictionary
+TOKEN_INFO = 'dfjjdslkjajsh%&'
+
+#*******************************COMMENTING OUT WEATHER CODE FOR NOW ***********************************************
+# @app.route("/login")
+# def login():
+    # client_id = app.config['CLIENT_ID']
+    # client_secret = app.config['CLIENT_SECRET']
+    # redirect_uri = app.config['REDIRECT_URI']
+    # scope = app.config['SCOPE']
+    
+    # # when the user clicks the button to send in the form, they make a post request
+    # if request.method == 'POST':
+    #     city = request.form['cityName']
+    #     state = request.form['stateName']
+    #     country = request.form['countryName']
+        
+    #     # we will call our get_weather method we created, save result in data
+    #     data = get_weather(city, state, country)
+    #     weather=data.description
+
+        #we set the valence score based on the weather description
+
+    # return redirect(url_for('login'))
+    # ******************TEMPORARILY COMMENTING THIS OUT UNTIL WE FIGURE OUT HOW TO CONNECT WEATHER STUFF TO SPOTIFY STUFF***********************************
+	# we then pass in data as a parameter to the front end so we can display it there
+    # return render_template("index.html", data=data)
+
+#our landing page, displays a button which routes the user to login
+@app.route('/')
+def home():
+    return render_template('index.html')
+
+
+# route to handle logging in
+@app.route('/login')
 def login():
     # create a SpotifyOAuth instance and get the authorization URL
     auth_url = create_spotify_oauth().get_authorize_url()
@@ -116,23 +142,21 @@ def make_playlist():
     sp.user_playlist_add_tracks(current_user_id, existing_playlist_id, song_uris, None)
     
 
+    #************************TO-DO: WE NEED TO STORE THEIR EMAIL/USER ID WITH THEIR PLAYLIST IN A DATABASE, AND THEN FETCH IT AND DISPLAY IT ON DONE PAGE
+
 
     # send them to the done html page and display their generated playlist
     playlist=[]
 
-    #checking if we can access weather within this function
-    return weather
-    #return render_template("done.html", playlist=playlist)
+    return render_template("done.html", playlist=playlist)
 
 def create_spotify_oauth():
-    # ********NEED TO FIX, IS CAUSING ERRORS WITH TOKEN, FOR NOW IT ONLY
-    #**********WORKS WHEN YOU DIRECTLY SET client_id, client_secret equal to their values
     # grabs the api key from the .env file and stores it in api_key
     return SpotifyOAuth(
         client_id = app.config['CLIENT_ID'],
         client_secret = app.config['CLIENT_SECRET'],
-        redirect_uri = app.config['REDIRECT_URI'],
-        scope = app.config['SCOPE']
+        redirect_uri = url_for('redirect_page', _external=True),
+        scope=app.config['SCOPE']
     )
 
 # function to get the token info from the session
