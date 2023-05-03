@@ -10,3 +10,5 @@ config.py
 .DS_Store
 .cache
 __pycache__/weather.cpython-311.pyc
+.env
+weatherOLD.py
