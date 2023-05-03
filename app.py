@@ -1,14 +1,14 @@
-from flask import Flask, render_template, request, session, redirect, url_for
+from flask import Flask, render_template, request, session, redirect, url_for, jsonify
 import string as string
 import time
 import requests
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 import os
+import weather
+
 
 app = Flask("411-Group-Project")
-app.config.from_pyfile('config.py')
-
 app.config.from_pyfile('config.py')
 
 # set the name of the session cookie
@@ -19,15 +19,6 @@ app.secret_key = 'YOUR_SECRET_KEY'
 
 # set the key for the token info in the session dictionary
 TOKEN_INFO = 'token_info'
-
-# set the name of the session cookie
-app.config['SESSION_COOKIE_NAME'] = 'Spotify Cookie'
-
-# set a random secret key to sign the cookie
-app.secret_key = 'YOUR_SECRET_KEY'
-
-# set the key for the token info in the session dictionary
-TOKEN_INFO = 'dfjjdslkjajsh%&'
 
 #*******************************COMMENTING OUT WEATHER CODE FOR NOW ***********************************************
 # @app.route("/login")
@@ -101,52 +92,16 @@ def make_playlist():
     # current user method returns a dictionary response, so we need to just grab the user id from it
     current_user_id = sp.current_user()['id']
 
-    #first we need to make sure a playlist with same name doesn't exist already
-    current_playlists =  sp.current_user_playlists()['items']
-    existing_playlist_id = None
-    for playlist in current_playlists:
-        if(playlist['name'] == 'Weatherify'):
-            existing_playlist_id = playlist['id']
-    
-    #create a playlist called Weatherify if that playlist doesn't exist already, and save its playlist id in existing_playlist_id
-    if existing_playlist_id == None:
-        existing_playlist_id=sp.user_playlist_create(current_user_id, 'Weatherify', public=True, collaborative=False, description='A playlist generated from the current weather at your location')['id']
 
-    #now we need to gather songs, we want to add songs to our playlist
-    song_uris = []
-    #get top tracks
-    top_tracks = sp.current_user_top_tracks(limit=20, offset=0, time_range='medium_term')['items']
-    for song in top_tracks:
-        # !!!!!!!!!!!!!!!!!!!!!!!!!!!if it falls within our valence range add it, these are placeholders, we need to pass in a lower/upper bound/weather param and valence score
-        #don't add if its a repeat
-        if (song['uri'] not in song_uris):
-            if (.85 <= sp.audio_features(song['id'])[0]['valence'] <= 1) :
-                song_uri= song['uri']
-                song_uris.append(song_uri)
-            
-    #loop over the user's playlists and within each playlist loop over songs and add them if they match valence req.
-    for playlist in sp.current_user_playlists(limit=50, offset=0)['items']:
-        playlist_id = playlist['id']
+    #*******************************WEATHER FUNCTIONS******************************************************************
+    weather_data = get_weather()
+    description = weather_data["description"]
+    lowerbound, upperbound = get_lower_upper_bound(description)
 
-        for song in sp.playlist_items(playlist_id, fields=None, limit=15, offset=0, market=None, additional_types=('track', 'episode'))['items']:
-            #don't add if its a repeat
-            if (song['track']['uri'] not in song_uris):
-                if (.85 <= sp.audio_features(song['track']['id'])[0]['valence'] <= 1) :
-                    song_uri= song['track']['uri']
-                    song_uris.append(song_uri)
-    
-
-    # add the songs to the playlist
-    sp.user_playlist_add_tracks(current_user_id, existing_playlist_id, song_uris, None)
-    
-
-    #************************TO-DO: WE NEED TO STORE THEIR EMAIL/USER ID WITH THEIR PLAYLIST IN A DATABASE, AND THEN FETCH IT AND DISPLAY IT ON DONE PAGE
+    return lowerbound
+    # return render_template("done.html")
 
 
-    # send them to the done html page and display their generated playlist
-    playlist=[]
-
-    return render_template("done.html", playlist=playlist)
 
 def create_spotify_oauth():
     # grabs the api key from the .env file and stores it in api_key
@@ -173,6 +128,28 @@ def get_token():
         token_info = spotify_oauth.refresh_access_token(token_info['refresh_token'])
 
     return token_info
+
+## weather routes
+@app.route('/weather')
+def get_weather():
+    city, country_code, description, fehTemperature, celTemperature = weather.find_long_lat()
+    return jsonify(city=city, country_code=country_code, description=description, fehTemperature=fehTemperature, celTemperature=celTemperature)
+
+def get_lower_upper_bound(description):
+    lowerbound, upperbound = 0.0, 0.0
+
+    if description == 'stormy':
+        lowerbound, upperbound = 0.0, 0.25
+    elif description in ['snowy', 'rainy', 'moderately rainy', 'lightly rainy', 'showery']:
+        lowerbound, upperbound = 0.25, 0.5
+    elif description == 'clear':
+        lowerbound, upperbound = 0.75, 1.0
+    else:
+        lowerbound, upperbound = 0.5, 0.75
+    return lowerbound, upperbound
+
+
+
 
 app.run(debug=True)
 
