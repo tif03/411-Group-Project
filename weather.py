@@ -1,52 +1,77 @@
-# this file processes the api call for Open Weather API
-# requires you to have installed requests, dotenv in your virtual env to get this to work
-from main import app
 import requests
+from geopy.geocoders import Nominatim
+from geopy.exc import GeocoderTimedOut, GeocoderServiceError
+from geopy.extra.rate_limiter import RateLimiter
+from ipregistry import IpregistryClient
 import os
-from dataclasses import dataclass
+from dotenv import load_dotenv
 
-# define a class object that allows us to retreive and store info from the current weather api call in a organized way
-# WeatherData object has 4 attributes
-@dataclass
-class WeatherData:
-    main: str
-    description: str
-    icon: str
-    temperature: float
+load_dotenv()
+
+API_KEY = os.getenv("API_KEY")
+LOCATION_API_KEY = os.getenv("LOCATION_API_KEY")
+IP_API_KEY = os.getenv("IP_API_KEY")
+
+def get_current_location():
+    client = IpregistryClient(IP_API_KEY)
+    ip_info = client.lookup()
+    return ip_info.location["latitude"], ip_info.location["longitude"]
 
 
-# grabs the api key from the .env file and stores it in api_key
-api_key = app.config['API_KEY']
+def find_long_lat():
+    try:
+        latitude, longitude = get_current_location()
+        geolocator = Nominatim(user_agent="weather_app")
+        geocode = RateLimiter(geolocator.reverse, min_delay_seconds=1)
+        location = geocode((latitude, longitude))
+        city = location.raw["address"].get("city") or location.raw["address"].get("town") or location.raw["address"].get("village") or location.raw["address"].get("hamlet")
+        country_code = location.raw["address"]["country_code"].upper()
+        description, fehTemperature, celTemperature = report_weather(city, country_code)
+        return city, country_code, description, fehTemperature, celTemperature
 
-# first we use Geocoding version of API to get latitude and longitude based on passed in parameters
-def get_lat_lon(city_name, state_code, country_code, API_key):
-    # make call with passed in params, then get response and then convert it to readable json
-    resp = requests.get(f'http://api.openweathermap.org/geo/1.0/direct?q={city_name},{state_code},{country_code}&appid={API_key}').json()
-    print(resp)
-    # the dictionary is the first element of response, store it in data
-    data = resp[0]
-    lat, lon = data.get('lat'), data.get('lon')
-    return lat, lon
+    except (GeocoderTimedOut, GeocoderServiceError) as ex:
+        print("Oops! Unable to retrieve your location :(")
+        return None, None, None, None, None
 
-def get_current_weather(lat, lon, API_key):
-    resp = requests.get(f'https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={API_key}&units=imperial').json()
 
-    # create data oject of our defined type weatherdata so we can easily grab the data we want
-    data = WeatherData(
-        main=resp.get('weather')[0].get('main'),
-        description=resp.get('weather')[0].get('description'),
-        icon=resp.get('weather')[0].get('icon'),
-        temperature=resp.get('main').get('temp')
-    )
+def report_weather(city, country_code):
+    weather_url = f"https://api.openweathermap.org/data/2.5/weather?q={city},{country_code}&appid={API_KEY}"
+    try:
+        response = requests.get(weather_url)
+        data = response.json()
+        description = format_description(data["weather"][0]["description"])
+        fehTemperature = kelvin_to_fahrenheit(data["main"]["temp"])
+        celTemperature = kelvin_to_celsius(data["main"]["temp"])
 
-    return data
+        return description, fehTemperature, celTemperature
+    except Exception as ex:
+        print("Oops! Unable to retrieve your location :(")
+        return None, None, None
 
-def main(city_name, state_name, country_name):
-    lat, lon = get_lat_lon(city_name, state_name, country_name, api_key)
-    weather_data = get_current_weather(lat, lon, api_key)
-    return weather_data
 
-#testing
+def format_description(description):
+    descriptions_list = {
+        'clear sky': 'clear',
+        'few clouds': 'slightly cloudy',
+        'scattered clouds': 'partly cloudy',
+        'broken clouds': 'mostly cloudy',
+        'overcast clouds': 'cloudy',
+        'shower rain': 'showery',
+        'light rain': 'lightly rainy',
+        'moderate rain': 'moderately rainy',
+        'rain': 'rainy',
+        'thunderstorm': 'stormy',
+        'snow': 'snowy',
+        'mist': 'misty',
+    }
+
+    return descriptions_list.get(description, description)
+
+def kelvin_to_fahrenheit(temperature):
+    return (temperature - 273.15) * 9/5 + 32
+
+def kelvin_to_celsius(temperature):
+    return temperature - 273.15
+
 if __name__ == "__main__":
-    lat, lon = get_lat_lon('Boston', 'MA', 'United States', api_key)
-    print(get_current_weather(lat, lon, api_key))
+    find_long_lat()
