@@ -1,6 +1,6 @@
 # this file processes the api call for Open Weather API
 # requires you to have installed requests, dotenv in your virtual env to get this to work
-from main import app
+from app import app
 import requests
 import os
 from dataclasses import dataclass

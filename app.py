@@ -1,11 +1,9 @@
 from flask import Flask, render_template, request, session, redirect, url_for
-from weather import main as get_weather
 import string as string
 import time
 import requests
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
-from dotenv import load_dotenv
 import os
 
 app = Flask("411-Group-Project")
