@@ -2,6 +2,9 @@
 # for more info:
 # https://git-scm.com/book/en/Git-Basics-Recording-Changes-to-the-Repository#_ignoring
 
+.env/
+env/
+
 venv/
 config.py
 .DS_Store
