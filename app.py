@@ -1,10 +1,11 @@
-from flask import Flask, render_template, request, session, redirect, url_for
+from flask import Flask, render_template, request, session, redirect, url_for, jsonify
 import string as string
 import time
 import requests
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 import os
+import weather
 
 app = Flask("411-Group-Project")
 app.config.from_pyfile('config.py')
@@ -15,8 +16,8 @@ app.config['SESSION_COOKIE_NAME'] = 'Spotify Cookie'
 # set a random secret key to sign the cookie
 app.secret_key = 'YOUR_SECRET_KEY'
 
-# set the key for the token info in the session dictionary
-TOKEN_INFO = 'dfjjdslkjajsh%&'
+
+TOKEN_INFO = 'token_info'
 
 #*******************************COMMENTING OUT WEATHER CODE FOR NOW ***********************************************
 # @app.route("/login")
@@ -90,7 +91,13 @@ def make_playlist():
     # current user method returns a dictionary response, so we need to just grab the user id from it
     current_user_id = sp.current_user()['id']
 
-    #first we need to make sure a playlist with same name doesn't exist already
+
+    #*******************************WEATHER FUNCTIONS******************************************************************
+    weather_data = get_weather()
+    description = weather_data["description"]
+    lowerbound, upperbound = get_lower_upper_bound(description)
+
+        #first we need to make sure a playlist with same name doesn't exist already
     current_playlists =  sp.current_user_playlists()['items']
     existing_playlist_id = None
     for playlist in current_playlists:
@@ -109,7 +116,7 @@ def make_playlist():
         # !!!!!!!!!!!!!!!!!!!!!!!!!!!if it falls within our valence range add it, these are placeholders, we need to pass in a lower/upper bound/weather param and valence score
         #don't add if its a repeat
         if (song['uri'] not in song_uris):
-            if (.85 <= sp.audio_features(song['id'])[0]['valence'] <= 1) :
+            if (lowerbound <= sp.audio_features(song['id'])[0]['valence'] < upperbound) :
                 song_uri= song['uri']
                 song_uris.append(song_uri)
             
@@ -120,11 +127,10 @@ def make_playlist():
         for song in sp.playlist_items(playlist_id, fields=None, limit=15, offset=0, market=None, additional_types=('track', 'episode'))['items']:
             #don't add if its a repeat
             if (song['track']['uri'] not in song_uris):
-                if (.85 <= sp.audio_features(song['track']['id'])[0]['valence'] <= 1) :
+                if (lowerbound <= sp.audio_features(song['track']['id'])[0]['valence'] < upperbound) :
                     song_uri= song['track']['uri']
                     song_uris.append(song_uri)
     
-
     # add the songs to the playlist
     sp.user_playlist_add_tracks(current_user_id, existing_playlist_id, song_uris, None)
     
@@ -133,9 +139,11 @@ def make_playlist():
 
 
     # send them to the done html page and display their generated playlist
-    playlist=[]
+    # playlist=sp.playlist(existing_playlist_id)
 
-    return render_template("done.html", playlist=playlist)
+    return render_template("done.html")
+
+
 
 def create_spotify_oauth():
     # grabs the api key from the .env file and stores it in api_key
@@ -162,6 +170,38 @@ def get_token():
         token_info = spotify_oauth.refresh_access_token(token_info['refresh_token'])
 
     return token_info
+
+## weather routes
+def get_weather():
+    city, country_code, description, fehTemperature, celTemperature = weather.find_long_lat()
+    return {
+        "city": city,
+        "country_code": country_code,
+        "description": description,
+        "fehTemperature": fehTemperature,
+        "celTemperature": celTemperature
+    }
+@app.route('/weather')
+def weather_route():
+    weather_data = get_weather()
+    return jsonify(weather_data)
+
+
+def get_lower_upper_bound(description):
+    lowerbound, upperbound = 0.0, 0.0
+
+    if description == 'stormy':
+        lowerbound, upperbound = 0.0, 0.25
+    elif description in ['snowy', 'rainy', 'moderately rainy', 'lightly rainy', 'showery']:
+        lowerbound, upperbound = 0.25, 0.5
+    elif description == 'clear':
+        lowerbound, upperbound = 0.75, 1.0
+    else:
+        lowerbound, upperbound = 0.5, 0.75
+    return lowerbound, upperbound
+
+
+
 
 app.run(debug=True)
 
