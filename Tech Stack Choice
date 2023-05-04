@@ -1,3 +1,0 @@
-We chose to use Python/Flask for our backend and Flask's default Jinja2 template engine w/ HTML for our front end. And for our database we decided to use SQLite.
-
-We decided to select Flask because we are all new to web development, but all are proficient at Python. We decided on SQLite because we heard it has minimal setup compared to other database engines, and we were working to try and get it working as soon as possible. 
