@@ -7,7 +7,6 @@ from spotipy.oauth2 import SpotifyOAuth
 import os
 import weather
 
-
 app = Flask("411-Group-Project")
 app.config.from_pyfile('config.py')
 
@@ -17,7 +16,7 @@ app.config['SESSION_COOKIE_NAME'] = 'Spotify Cookie'
 # set a random secret key to sign the cookie
 app.secret_key = 'YOUR_SECRET_KEY'
 
-# set the key for the token info in the session dictionary
+
 TOKEN_INFO = 'token_info'
 
 #*******************************COMMENTING OUT WEATHER CODE FOR NOW ***********************************************

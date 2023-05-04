@@ -5,7 +5,7 @@ All Spotify API calls
 """
 
 from flask import render_template, redirect, request
-from app import app
+from app import app, get_token, create_spotify_oauth
 import config
 import base64
 import os
@@ -16,39 +16,12 @@ import time
 import logging
 
 """
-Creates a state key for the authorization request
-"""
-def createStateKey(size):
-	#https://stackoverflow.com/questions/2257441/random-string-generation-with-upper-case-letters-and-digits
-	return ''.join(rand.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(size))
-
-"""
-Requests an access token from the Spotify API with a refresh token. Only called if an access
-token and refresh token were previously acquired.
-Returns: either [access token, expiration time] or None if request failed
-"""
-def refreshToken(refresh_token):
-	token_url = 'https://accounts.spotify.com/api/token'
-	authorization = app.config['AUTHORIZATION']
-
-	headers = {'Authorization': authorization, 'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded'}
-	body = {'refresh_token': refresh_token, 'grant_type': 'refresh_token'}
-	post_response = requests.post(token_url, headers=headers, data=body)
-
-	# 200 code indicates access token was properly granted
-	if post_response.status_code == 200:
-		return post_response.json()['access_token'], post_response.json()['expires_in']
-	else:
-		logging.error('refreshToken:' + str(post_response.status_code))
-		return None
-
-"""
 Determines whether new access token has to be requested because time has expired on the 
 old token. If the access token has expired, the token refresh function is called. 
 """
 def checkTokenStatus(session):
 	if time.time() > session['token_expiration']:
-		payload = refreshToken(session['refresh_token'])
+		payload = get_token(session['refresh_token'])
 
 		if payload != None:
 			session['token'] = payload[0]
@@ -58,7 +31,6 @@ def checkTokenStatus(session):
 			return None
 
 	return "Success"
-
 
 """
 REQUESTS: Functions to make GET, POST, PUT, and DELETE requests with the correct
@@ -78,7 +50,7 @@ def makeGetRequest(session, url, params={}):
 		return response.json()
 
 	# if a 401 error occurs, update the access token
-	elif response.cod == 401:
+	elif response.cod == 401 and checkTokenStatus(session) != None:
 		return makeGetRequest(session, url, params)
 
 	else:
@@ -99,7 +71,7 @@ def makePutRequest(session, url, params={}, data={}):
 		return response.status_code
 
 	# if a 401 error occurs, update the access token
-	elif response.status_code == 401:
+	elif response.status_code == 401 and checkTokenStatus(session) != None:
 		return makePutRequest(session, url, data)
 	else:
 		logging.error('makePutRequest:' + str(response.status_code))
@@ -121,7 +93,7 @@ def makePostRequest(session, url, data):
 		return response
 
 	# if a 401 error occurs, update the access token
-	elif response.status_code == 401:
+	elif response.status_code == 401 and checkTokenStatus(session) != None:
 		return makePostRequest(session, url, data)
 
 	elif response.status_code == 403 or response.status_code == 404:
@@ -145,7 +117,7 @@ def makeDeleteRequest(session, url, data):
 		return response.json()
 
 	# if a 401 error occurs, update the access token
-	elif response.status_code == 401:
+	elif response.status_code == 401 and checkTokenStatus(session) != None:
 		return makeDeleteRequest(session, url, data)
 	else:
 		logging.error('makeDeleteRequest:' + str(response.status_code))
