@@ -97,7 +97,9 @@ def make_playlist():
     description = weather_data["description"]
     lowerbound, upperbound = get_lower_upper_bound(description)
 
-        #first we need to make sure a playlist with same name doesn't exist already
+    #*******************************PLAYLIST FUNCTIONS******************************************************************
+
+    #first we need to make sure a playlist with same name doesn't exist already
     current_playlists =  sp.current_user_playlists()['items']
     existing_playlist_id = None
     for playlist in current_playlists:
@@ -108,10 +110,28 @@ def make_playlist():
     if existing_playlist_id == None:
         existing_playlist_id=sp.user_playlist_create(current_user_id, 'Weatherify', public=True, collaborative=False, description='A playlist generated from the current weather at your location')['id']
 
-    #now we need to gather songs, we want to add songs to our playlist
-    song_uris = []
     #get top tracks
-    top_tracks = sp.current_user_top_tracks(limit=20, offset=0, time_range='medium_term')['items']
+    top_tracks = sp.current_user_top_tracks(limit=2, offset=0, time_range='medium_term')['items']
+    top_artists = sp.current_user_top_artists(limit=2, offset=0, time_range='medium_term')['items']
+
+    top_tracks_uri = []
+    top_artists_uri = []
+
+    for song in top_tracks:
+        song_uri= song['uri']
+        top_tracks_uri.append(song_uri)
+    for artist in top_artists:
+        artist_uri= artist['uri']
+        top_artists_uri.append(artist_uri)
+
+    #valance, energy, dancability min_dancability=lowerbound, max_dancability=upperbound, min_energy=lowerbound, max_energy=upperbound,
+    recommended_songs = sp.recommendations(seed_tracks=top_tracks_uri, seed_artists=top_artists_uri, min_dancability=lowerbound, max_dancability=upperbound, min_energy=lowerbound, max_energy=upperbound, min_valance=lowerbound, max_valance=upperbound)['tracks']
+    recommended_tracks_uri = []
+    for song in recommended_songs:
+        uri = song['uri']
+        recommended_tracks_uri.append(uri)
+    
+    """
     for song in top_tracks:
         # !!!!!!!!!!!!!!!!!!!!!!!!!!!if it falls within our valence range add it, these are placeholders, we need to pass in a lower/upper bound/weather param and valence score
         #don't add if its a repeat
@@ -130,11 +150,11 @@ def make_playlist():
                 if (lowerbound <= sp.audio_features(song['track']['id'])[0]['valence'] < upperbound) :
                     song_uri= song['track']['uri']
                     song_uris.append(song_uri)
-    
-    # add the songs to the playlist
-    sp.user_playlist_add_tracks(current_user_id, existing_playlist_id, song_uris, None)
-    
+    """
 
+    # add the songs to the playlist
+    sp.user_playlist_add_tracks(current_user_id, existing_playlist_id, recommended_tracks_uri, None)
+    
     #************************TO-DO: WE NEED TO STORE THEIR EMAIL/USER ID WITH THEIR PLAYLIST IN A DATABASE, AND THEN FETCH IT AND DISPLAY IT ON DONE PAGE
 
 
@@ -181,6 +201,7 @@ def get_weather():
         "fehTemperature": fehTemperature,
         "celTemperature": celTemperature
     }
+
 @app.route('/weather')
 def weather_route():
     weather_data = get_weather()
@@ -199,8 +220,6 @@ def get_lower_upper_bound(description):
     else:
         lowerbound, upperbound = 0.5, 0.75
     return lowerbound, upperbound
-
-
 
 
 app.run(debug=True)
