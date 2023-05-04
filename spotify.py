@@ -2,6 +2,8 @@
 reference https://github.com/lucaoh21/Spotify-Discover-2.0/blob/master/functions.py 
 
 All Spotify API calls
+
+DONT NEED THIS FILE
 """
 
 from flask import render_template, redirect, request
