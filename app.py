@@ -98,8 +98,51 @@ def make_playlist():
     description = weather_data["description"]
     lowerbound, upperbound = get_lower_upper_bound(description)
 
-    return lowerbound
-    # return render_template("done.html")
+        #first we need to make sure a playlist with same name doesn't exist already
+    current_playlists =  sp.current_user_playlists()['items']
+    existing_playlist_id = None
+    for playlist in current_playlists:
+        if(playlist['name'] == 'Weatherify'):
+            existing_playlist_id = playlist['id']
+    
+    #create a playlist called Weatherify if that playlist doesn't exist already, and save its playlist id in existing_playlist_id
+    if existing_playlist_id == None:
+        existing_playlist_id=sp.user_playlist_create(current_user_id, 'Weatherify', public=True, collaborative=False, description='A playlist generated from the current weather at your location')['id']
+
+    #now we need to gather songs, we want to add songs to our playlist
+    song_uris = []
+    #get top tracks
+    top_tracks = sp.current_user_top_tracks(limit=20, offset=0, time_range='medium_term')['items']
+    for song in top_tracks:
+        # !!!!!!!!!!!!!!!!!!!!!!!!!!!if it falls within our valence range add it, these are placeholders, we need to pass in a lower/upper bound/weather param and valence score
+        #don't add if its a repeat
+        if (song['uri'] not in song_uris):
+            if (lowerbound <= sp.audio_features(song['id'])[0]['valence'] < upperbound) :
+                song_uri= song['uri']
+                song_uris.append(song_uri)
+            
+    #loop over the user's playlists and within each playlist loop over songs and add them if they match valence req.
+    for playlist in sp.current_user_playlists(limit=50, offset=0)['items']:
+        playlist_id = playlist['id']
+
+        for song in sp.playlist_items(playlist_id, fields=None, limit=15, offset=0, market=None, additional_types=('track', 'episode'))['items']:
+            #don't add if its a repeat
+            if (song['track']['uri'] not in song_uris):
+                if (lowerbound <= sp.audio_features(song['track']['id'])[0]['valence'] < upperbound) :
+                    song_uri= song['track']['uri']
+                    song_uris.append(song_uri)
+    
+    # add the songs to the playlist
+    sp.user_playlist_add_tracks(current_user_id, existing_playlist_id, song_uris, None)
+    
+
+    #************************TO-DO: WE NEED TO STORE THEIR EMAIL/USER ID WITH THEIR PLAYLIST IN A DATABASE, AND THEN FETCH IT AND DISPLAY IT ON DONE PAGE
+
+
+    # send them to the done html page and display their generated playlist
+    # playlist=sp.playlist(existing_playlist_id)
+
+    return render_template("done.html")
 
 
 
@@ -130,10 +173,20 @@ def get_token():
     return token_info
 
 ## weather routes
-@app.route('/weather')
 def get_weather():
     city, country_code, description, fehTemperature, celTemperature = weather.find_long_lat()
-    return jsonify(city=city, country_code=country_code, description=description, fehTemperature=fehTemperature, celTemperature=celTemperature)
+    return {
+        "city": city,
+        "country_code": country_code,
+        "description": description,
+        "fehTemperature": fehTemperature,
+        "celTemperature": celTemperature
+    }
+@app.route('/weather')
+def weather_route():
+    weather_data = get_weather()
+    return jsonify(weather_data)
+
 
 def get_lower_upper_bound(description):
     lowerbound, upperbound = 0.0, 0.0

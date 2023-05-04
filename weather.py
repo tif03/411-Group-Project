@@ -1,7 +1,3 @@
-
-# this file processes the api call for Open Weather API
-# requires you to have installed requests, dotenv in your virtual env to get this to work
-from app import app
 import requests
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderServiceError
