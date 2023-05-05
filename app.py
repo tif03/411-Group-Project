@@ -6,6 +6,7 @@ from spotipy.oauth2 import SpotifyOAuth
 import weather
 from flask_sqlalchemy import SQLAlchemy
 
+
 app = Flask("411-Group-Project")
 app.config.from_pyfile('config.py')
 
@@ -15,7 +16,7 @@ app.config['SESSION_COOKIE_NAME'] = 'Spotify Cookie'
 # set a random secret key to sign the cookie
 app.secret_key = 'YOUR_SECRET_KEY'
 
-
+# set the key for the token info in the session dictionary
 TOKEN_INFO = 'token_info'
 
 # ~~~~~~~~~~~~~~~~~~~~~DATABASE SETUP~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -89,8 +90,7 @@ def make_playlist():
     description = weather_data["description"]
     lowerbound, upperbound = get_lower_upper_bound(description)
 
-    #*******************************PLAYLIST FUNCTIONS******************************************************************
-
+    # first we check if a playlist with same name already exists
     current_playlists =  sp.current_user_playlists()['items']
     existing_playlist_id = None
     for playlist in current_playlists:
@@ -100,7 +100,7 @@ def make_playlist():
     # create a playlist called Weatherify if playlist doesn't exist already, and save its playlist id in existing_playlist_id
     if existing_playlist_id == None:
         existing_playlist_id=sp.user_playlist_create(current_user_id, 'Weatherify', public=True, collaborative=False, description='A playlist generated from the current weather at your location')['id']
-
+    
     #get top tracks
     top_tracks = sp.current_user_top_tracks(limit=2, offset=0, time_range='medium_term')['items']
     top_artists = sp.current_user_top_artists(limit=2, offset=0, time_range='medium_term')['items']
@@ -122,33 +122,14 @@ def make_playlist():
         uri = song['uri']
         recommended_tracks_uri.append(uri)
     
-    """
-    for song in top_tracks:
-        # if it falls within our valence range (and is not a repeat) add it
-        if (song['uri'] not in song_uris):
-            if (lowerbound <= sp.audio_features(song['id'])[0]['valence'] < upperbound) :
-                song_uri= song['uri']
-                song_uris.append(song_uri)
-            
-    #loop over the user's playlists and within each playlist loop over songs and add them if they match valence req.
-    for playlist in sp.current_user_playlists(limit=50, offset=0)['items']:
-        playlist_id = playlist['id']
-        for song in sp.playlist_items(playlist_id, fields=None, limit=15, offset=0, market=None, additional_types=('track', 'episode'))['items']:
-            if (song['track']['uri'] not in song_uris):
-                if (lowerbound <= sp.audio_features(song['track']['id'])[0]['valence'] < upperbound) :
-                    song_uri= song['track']['uri']
-                    song_uris.append(song_uri)
-    """
-
-    # add the songs to the playlist
     sp.user_playlist_add_tracks(current_user_id, existing_playlist_id, recommended_tracks_uri, None)
     
+
     #loop over the songs in our generated playlist to compile final list to pass to front end
     final_playlist = []
     for song in sp.playlist(existing_playlist_id)['tracks']['items']:
         song_and_artist = song['track']['name'] + " - " + song['track']['artists'][0]['name']
         final_playlist.append(song_and_artist)
-
 
     # store the playlist id and user id in the database
     new_playlist = Playlist(spotify_user_id=current_user_id, playlist_id=existing_playlist_id)
@@ -195,7 +176,6 @@ def get_weather():
         "fehTemperature": fehTemperature,
         "celTemperature": celTemperature
     }
-
 @app.route('/weather')
 def weather_route():
     weather_data = get_weather()
