@@ -100,29 +100,29 @@ def make_playlist():
     # create a playlist called Weatherify if playlist doesn't exist already, and save its playlist id in existing_playlist_id
     if existing_playlist_id == None:
         existing_playlist_id=sp.user_playlist_create(current_user_id, 'Weatherify', public=True, collaborative=False, description='A playlist generated from the current weather at your location')['id']
-
-    # now we gather songs to add to our playlist
-    song_uris = []
-    #get top tracks
-    top_tracks = sp.current_user_top_tracks(limit=20, offset=0, time_range='medium_term')['items']
-    for song in top_tracks:
-        # if it falls within our valence range (and is not a repeat) add it
-        if (song['uri'] not in song_uris):
-            if (lowerbound <= sp.audio_features(song['id'])[0]['valence'] < upperbound) :
-                song_uri= song['uri']
-                song_uris.append(song_uri)
-            
-    #loop over the user's playlists and within each playlist loop over songs and add them if they match valence req.
-    for playlist in sp.current_user_playlists(limit=50, offset=0)['items']:
-        playlist_id = playlist['id']
-        for song in sp.playlist_items(playlist_id, fields=None, limit=15, offset=0, market=None, additional_types=('track', 'episode'))['items']:
-            if (song['track']['uri'] not in song_uris):
-                if (lowerbound <= sp.audio_features(song['track']['id'])[0]['valence'] < upperbound) :
-                    song_uri= song['track']['uri']
-                    song_uris.append(song_uri)
     
-    # add the songs to the playlist
-    sp.user_playlist_add_tracks(current_user_id, existing_playlist_id, song_uris, None)
+    #get top tracks
+    top_tracks = sp.current_user_top_tracks(limit=2, offset=0, time_range='medium_term')['items']
+    top_artists = sp.current_user_top_artists(limit=2, offset=0, time_range='medium_term')['items']
+
+    top_tracks_uri = []
+    top_artists_uri = []
+
+    for song in top_tracks:
+        song_uri= song['uri']
+        top_tracks_uri.append(song_uri)
+    for artist in top_artists:
+        artist_uri= artist['uri']
+        top_artists_uri.append(artist_uri)
+
+    #valance, energy, dancability min_dancability=lowerbound, max_dancability=upperbound, min_energy=lowerbound, max_energy=upperbound,
+    recommended_songs = sp.recommendations(seed_tracks=top_tracks_uri, seed_artists=top_artists_uri, min_dancability=lowerbound, max_dancability=upperbound, min_energy=lowerbound, max_energy=upperbound, min_valance=lowerbound, max_valance=upperbound)['tracks']
+    recommended_tracks_uri = []
+    for song in recommended_songs:
+        uri = song['uri']
+        recommended_tracks_uri.append(uri)
+    
+    sp.user_playlist_add_tracks(current_user_id, existing_playlist_id, recommended_tracks_uri, None)
     
 
     #loop over the songs in our generated playlist to compile final list to pass to front end
