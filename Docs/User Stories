@@ -1,0 +1,17 @@
+User Story 1:
+The user wants to login to the application so that they can generate their playlist based on the weather in their location. They are able to do this by clicking the login button, from there they are prompted to either enter their username and password or instead create an account. 
+
+User Story 2:
+The logged in user presses a button to receive the weather forecast information based on their location. 
+
+User Story 3: 
+The user, having already logged in and generated their playlist based on their spotify and weather details, receives their playlist via a link sent to their email. The link will bring them to their playlist in the Spotify app.
+
+User Story 4:
+The user wants to generate a playlist only containing songs of their favorite genre. They hate classical music and only like heavy metal, so they would hate the generated playlist if it contained any classical songs. They are able to select the genres to be included in their playlist before the playlist is generated based on the weather.
+
+User Story 5:
+The user does not find it convenient to have to stay on the app’s website in order to play their generated playlist. The user wants to generate a playlist to listen to after class instead on Spotify where all their other playlists are.
+ 
+User Story 6:
+The user wants to save the playlist to their Spotify account. They want to be able to listen to their playlist whenever they want, and not have to generate a new playlist every time they use the app, since the playlist generated each time would likely vary depending on the weather at the time / location of generation or their most recent listening history.
