@@ -5,6 +5,7 @@ import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 import weather
 from flask_sqlalchemy import SQLAlchemy
+from datetime import date
 
 
 app = Flask("411-Group-Project")
@@ -20,20 +21,21 @@ app.secret_key = 'YOUR_SECRET_KEY'
 TOKEN_INFO = 'token_info'
 
 # ~~~~~~~~~~~~~~~~~~~~~DATABASE SETUP~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///playlists.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///user_playlists.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # instantiate database object
 db = SQLAlchemy(app)
 
 # simple model for playlists (table in database)
-class Playlist(db.Model):
+class Playlists(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     spotify_user_id = db.Column(db.String(50), nullable=False)
     playlist_id = db.Column(db.String(50), nullable=False)
+    weather_description = db.Column(db.String(50), nullable=False)
 
     def __repr__(self):
-        return f"Playlist('{self.spotify_user_id}', '{self.playlist_id}')"
+        return f"Playlist('{self.spotify_user_id}', '{self.playlist_id}', '{self.weather_description})"
 
 
 
@@ -87,19 +89,25 @@ def make_playlist():
 
     # gets weather and corresponding valence score bounds (valence score = mood of songs we'll put in the playlist)
     weather_data = get_weather()
-    description = weather_data["description"]
-    lowerbound, upperbound = get_lower_upper_bound(description)
+    weather_description = weather_data["description"]
+    lowerbound, upperbound = get_lower_upper_bound(weather_description)
+
+    #today's date
+    today = date.today()
+    date_of_creation = today.strftime("%m/%d/%y")
 
     # first we check if a playlist with same name already exists
-    current_playlists =  sp.current_user_playlists()['items']
-    existing_playlist_id = None
-    for playlist in current_playlists:
-        if(playlist['name'] == 'Weatherify'):
-            existing_playlist_id = playlist['id']
+    #current_playlists =  sp.current_user_playlists()['items']
+    #existing_playlist_id = None
+    #for playlist in current_playlists:
+    #    if(playlist['name'] == 'Weatherify'):
+    #        existing_playlist_id = playlist['id']
     
     # create a playlist called Weatherify if playlist doesn't exist already, and save its playlist id in existing_playlist_id
-    if existing_playlist_id == None:
-        existing_playlist_id=sp.user_playlist_create(current_user_id, 'Weatherify', public=True, collaborative=False, description='A playlist generated from the current weather at your location')['id']
+    #if existing_playlist_id == None:
+        
+    new_playlist_title = date_of_creation + ' - ' + weather_description + ' playlist'
+    new_playlist_id = sp.user_playlist_create(current_user_id, new_playlist_title, public=True, collaborative=False, description='A playlist generated from the current weather at your location')['id']
     
     #get top tracks
     top_tracks = sp.current_user_top_tracks(limit=2, offset=0, time_range='medium_term')['items']
@@ -122,22 +130,22 @@ def make_playlist():
         uri = song['uri']
         recommended_tracks_uri.append(uri)
     
-    sp.user_playlist_add_tracks(current_user_id, existing_playlist_id, recommended_tracks_uri, None)
+    sp.user_playlist_add_tracks(current_user_id, new_playlist_id, recommended_tracks_uri, None)
     
 
     #loop over the songs in our generated playlist to compile final list to pass to front end
     final_playlist = []
-    for song in sp.playlist(existing_playlist_id)['tracks']['items']:
+    for song in sp.playlist(new_playlist_id)['tracks']['items']:
         song_and_artist = song['track']['name'] + " - " + song['track']['artists'][0]['name']
         final_playlist.append(song_and_artist)
 
     # store the playlist id and user id in the database
-    new_playlist = Playlist(spotify_user_id=current_user_id, playlist_id=existing_playlist_id)
+    new_playlist = Playlists(spotify_user_id=current_user_id, playlist_id=new_playlist_id, weather_description = weather_description)
     db.session.add(new_playlist)
     db.session.commit()
 
     # send them to the done html page and display their generated playlist
-    return render_template("done.html", final_playlist=final_playlist)
+    return render_template("done.html", final_playlist=final_playlist, new_playlist_title=new_playlist_title)
 
 
 def create_spotify_oauth():
