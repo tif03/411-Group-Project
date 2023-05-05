@@ -192,9 +192,9 @@ def weather_route():
 def get_lower_upper_bound(description):
     lowerbound, upperbound = 0.0, 0.0
 
-    if description == 'stormy':
+    if description == ['stormy', 'snowy']:
         lowerbound, upperbound = 0.0, 0.25
-    elif description in ['snowy', 'rainy', 'moderately rainy', 'lightly rainy', 'showery']:
+    elif description in ['misty', 'cloudy', 'rainy', 'moderately rainy', 'lightly rainy', 'showery']:
         lowerbound, upperbound = 0.25, 0.5
     elif description == 'clear':
         lowerbound, upperbound = 0.75, 1.0
