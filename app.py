@@ -1,11 +1,10 @@
 from flask import Flask, render_template, request, session, redirect, url_for, jsonify
 import string as string
 import time
-import requests
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
-import os
 import weather
+from flask_sqlalchemy import SQLAlchemy
 
 
 app = Flask("411-Group-Project")
@@ -20,36 +19,29 @@ app.secret_key = 'YOUR_SECRET_KEY'
 # set the key for the token info in the session dictionary
 TOKEN_INFO = 'token_info'
 
-#*******************************COMMENTING OUT WEATHER CODE FOR NOW ***********************************************
-# @app.route("/login")
-# def login():
-    # client_id = app.config['CLIENT_ID']
-    # client_secret = app.config['CLIENT_SECRET']
-    # redirect_uri = app.config['REDIRECT_URI']
-    # scope = app.config['SCOPE']
-    
-    # # when the user clicks the button to send in the form, they make a post request
-    # if request.method == 'POST':
-    #     city = request.form['cityName']
-    #     state = request.form['stateName']
-    #     country = request.form['countryName']
-        
-    #     # we will call our get_weather method we created, save result in data
-    #     data = get_weather(city, state, country)
-    #     weather=data.description
+# ~~~~~~~~~~~~~~~~~~~~~DATABASE SETUP~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///playlists.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-        #we set the valence score based on the weather description
+# instantiate database object
+db = SQLAlchemy(app)
 
-    # return redirect(url_for('login'))
-    # ******************TEMPORARILY COMMENTING THIS OUT UNTIL WE FIGURE OUT HOW TO CONNECT WEATHER STUFF TO SPOTIFY STUFF***********************************
-	# we then pass in data as a parameter to the front end so we can display it there
-    # return render_template("index.html", data=data)
+# simple model for playlists (table in database)
+class Playlist(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    spotify_user_id = db.Column(db.String(50), nullable=False)
+    playlist_id = db.Column(db.String(50), nullable=False)
 
-#our landing page, displays a button which routes the user to login
+    def __repr__(self):
+        return f"Playlist('{self.spotify_user_id}', '{self.playlist_id}')"
+
+
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ROUTES~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# our landing page, displays a button which routes the user to login
 @app.route('/')
 def home():
     return render_template('index.html')
-
 
 # route to handle logging in
 @app.route('/login')
@@ -74,8 +66,8 @@ def redirect_page():
     return redirect(url_for('make_playlist',_external=True))
 
 
-# ******************************USES PLACEHOLDER VALENCE SCORE BOUNDS, WE NEED TO PASS IT IN SOMEHOW **********************************************
-# this route should generate the playlist Weatherify, and populate it with songs based on the user's top tracks
+# this route generates playlist Weatherify with songs based on the user's top tracks & playlists
+# also stores the playlist id and user id in database
 @app.route('/makePlaylist')
 def make_playlist():
     try: 
@@ -93,29 +85,28 @@ def make_playlist():
     current_user_id = sp.current_user()['id']
 
 
-    #*******************************WEATHER FUNCTIONS******************************************************************
+    # gets weather and corresponding valence score bounds (valence score = mood of songs we'll put in the playlist)
     weather_data = get_weather()
     description = weather_data["description"]
     lowerbound, upperbound = get_lower_upper_bound(description)
 
-        #first we need to make sure a playlist with same name doesn't exist already
+    # first we check if a playlist with same name already exists
     current_playlists =  sp.current_user_playlists()['items']
     existing_playlist_id = None
     for playlist in current_playlists:
         if(playlist['name'] == 'Weatherify'):
             existing_playlist_id = playlist['id']
     
-    #create a playlist called Weatherify if that playlist doesn't exist already, and save its playlist id in existing_playlist_id
+    # create a playlist called Weatherify if playlist doesn't exist already, and save its playlist id in existing_playlist_id
     if existing_playlist_id == None:
         existing_playlist_id=sp.user_playlist_create(current_user_id, 'Weatherify', public=True, collaborative=False, description='A playlist generated from the current weather at your location')['id']
 
-    #now we need to gather songs, we want to add songs to our playlist
+    # now we gather songs to add to our playlist
     song_uris = []
     #get top tracks
     top_tracks = sp.current_user_top_tracks(limit=20, offset=0, time_range='medium_term')['items']
     for song in top_tracks:
-        # !!!!!!!!!!!!!!!!!!!!!!!!!!!if it falls within our valence range add it, these are placeholders, we need to pass in a lower/upper bound/weather param and valence score
-        #don't add if its a repeat
+        # if it falls within our valence range (and is not a repeat) add it
         if (song['uri'] not in song_uris):
             if (lowerbound <= sp.audio_features(song['id'])[0]['valence'] < upperbound) :
                 song_uri= song['uri']
@@ -124,9 +115,7 @@ def make_playlist():
     #loop over the user's playlists and within each playlist loop over songs and add them if they match valence req.
     for playlist in sp.current_user_playlists(limit=50, offset=0)['items']:
         playlist_id = playlist['id']
-
         for song in sp.playlist_items(playlist_id, fields=None, limit=15, offset=0, market=None, additional_types=('track', 'episode'))['items']:
-            #don't add if its a repeat
             if (song['track']['uri'] not in song_uris):
                 if (lowerbound <= sp.audio_features(song['track']['id'])[0]['valence'] < upperbound) :
                     song_uri= song['track']['uri']
@@ -136,14 +125,19 @@ def make_playlist():
     sp.user_playlist_add_tracks(current_user_id, existing_playlist_id, song_uris, None)
     
 
-    #************************TO-DO: WE NEED TO STORE THEIR EMAIL/USER ID WITH THEIR PLAYLIST IN A DATABASE, AND THEN FETCH IT AND DISPLAY IT ON DONE PAGE
+    #loop over the songs in our generated playlist to compile final list to pass to front end
+    final_playlist = []
+    for song in sp.playlist(existing_playlist_id)['tracks']['items']:
+        song_and_artist = song['track']['name'] + " - " + song['track']['artists'][0]['name']
+        final_playlist.append(song_and_artist)
 
+    # store the playlist id and user id in the database
+    new_playlist = Playlist(spotify_user_id=current_user_id, playlist_id=existing_playlist_id)
+    db.session.add(new_playlist)
+    db.session.commit()
 
     # send them to the done html page and display their generated playlist
-    # playlist=sp.playlist(existing_playlist_id)
-
-    return render_template("done.html")
-
+    return render_template("done.html", final_playlist=final_playlist)
 
 
 def create_spotify_oauth():
@@ -172,7 +166,7 @@ def get_token():
 
     return token_info
 
-## weather routes
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~WEATHER FUNCTIONS AND ROUTES~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def get_weather():
     city, country_code, description, fehTemperature, celTemperature = weather.find_long_lat()
     return {
@@ -186,7 +180,6 @@ def get_weather():
 def weather_route():
     weather_data = get_weather()
     return jsonify(weather_data)
-
 
 def get_lower_upper_bound(description):
     lowerbound, upperbound = 0.0, 0.0
@@ -202,9 +195,8 @@ def get_lower_upper_bound(description):
     return lowerbound, upperbound
 
 
-
-
-app.run(debug=True)
-
-# if __name__ == "__main__":
-#     app.run()
+if __name__ == "__main__":
+    # need for database to correctly load
+    with app.app_context():
+        db.create_all()
+    app.run(debug=True)
