@@ -7,8 +7,13 @@
 
     <body>
         <h1> Forecast Playlist Generated </h1>
-        <!--*****************************************TO-DO: IMPLEMENT DATABASE SO WE CAN DISPLAY THE USER'S GENERATED PLAYLIST**************************************-->
         
-
+        <!-- display their playlists-->
+        <ul>
+            {% for song in final_playlist %}
+                <li>{{ song }}</li>
+            {% endfor %}
+        </ul>
+        
     </body>
 </html>
